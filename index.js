@@ -1,6 +1,9 @@
 const express = require('express');
 const app = express();
+
 const { nuevoUsuario, getUsuario, editarUsuario, getAuthUsuario } = require('./bd/coneccion.js');
+const send = require('./correo.js');
+
 const exphbs = require("express-handlebars");
 const expressFileUpload = require("express-fileupload");
 const bodyParser = require("body-parser");
@@ -129,9 +132,47 @@ app.post('/verify', async (req, res) => {
             error: "este usuario no esta registrado",
             code: 401,
         });
-
-
     }
-
-
 })
+
+
+app.get("/evidencias", (req, res) => {
+    // Paso 2
+    let { token } = req.query;
+    // Paso 3
+    jwt.verify(token, secretKey, (err, decoded) => {
+
+        const { data } = decoded;
+        const { nombre, email } = data;
+        err
+            ? res.status(401).send({
+                error: "401 Unauthorized",
+                message: err.message,
+            })
+            :
+            res.render('Evidencias', { nombre, email });
+    });
+});
+
+
+
+app.post("/upload", async(req, res) => {
+    if (Object.keys(req.files).length == 0) {
+        return res.status(400).send("No se encontro ningun archivo en la consulta");
+    }
+    const { foto } = req.files;
+    const { name } = foto;
+    const { email, nombre } = req.body;
+    
+console.log(foto,name,email)    
+    foto.mv(`${__dirname}/public/upload/${name}`, async(err) => {
+     if(err) return res.status(500).send({
+         error: `algo salio mal .... ${err}`,
+         code: 500
+     })
+     
+     await send(email,nombre)
+        res.send("Foto cargado con éxito");
+    });
+});
+
